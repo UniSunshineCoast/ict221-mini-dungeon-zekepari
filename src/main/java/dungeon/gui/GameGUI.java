@@ -19,9 +19,13 @@ public class GameGUI extends Application {
     public void start(Stage primaryStage) throws Exception {
         BorderPane root = FXMLLoader.load(getClass().getResource("game_gui.fxml"));
 
-        primaryStage.setScene(new Scene(root, 800, 800));
+        Scene scene = new Scene(root, 800, 800);
+        primaryStage.setScene(scene);
         primaryStage.setTitle("MiniDungeon Game");
         primaryStage.show();
+        
+        // Request focus for the root so key events are received
+        root.requestFocus();
     }
 
     /** In IntelliJ, do NOT run this method.  Run 'RunGame.main()' instead. */

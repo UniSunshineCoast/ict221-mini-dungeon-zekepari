@@ -2,6 +2,11 @@ plugins {
     id 'java'
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'jacoco'
+}
+
+jacoco {
+    toolVersion = "0.8.11"
 }
 
 group = 'ict221'
@@ -21,8 +26,7 @@ java {
 }
 
 application {
-    mainModule = 'dungeon.gui'
-    mainClass = 'dungeon.gui.RunGUI'
+    mainClass = 'dungeon.gui.RunGame'
 }
 
 javafx {
@@ -31,6 +35,7 @@ javafx {
 }
 
 dependencies {
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
     testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
 }
@@ -51,5 +56,43 @@ sourceSets.main {
         // we also look for resources (like *.fxml) in src/main/java
         srcDirs = ['src/main/java', 'src/main/resources']
         exclude "**/*.java"
+    }
+}
+
+// JaCoCo test coverage configuration
+test {
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = false
+        csv.required = false
+        html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                'dungeon/gui/**'
+            ])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                'dungeon/gui/**'
+            ])
+        }))
+    }
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.85
+            }
+        }
     }
 }
