@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
@@ -58,14 +59,36 @@ public class Controller {
 
     @FXML
     private Button newGameButton;
+    
+    @FXML
+    private TextArea actionLogArea;
 
     private GameEngine engine;
 
     @FXML
     public void initialize() {
-        engine = new GameEngine(2); // Use moderate difficulty
-        updateGui();
-        updateLabels();
+        // Show initial difficulty selection
+        javafx.application.Platform.runLater(() -> {
+            javafx.scene.control.ChoiceDialog<Integer> difficultyDialog = new javafx.scene.control.ChoiceDialog<>(2, 1, 2, 3, 4, 5);
+            difficultyDialog.setTitle("Welcome to MiniDungeon");
+            difficultyDialog.setHeaderText("Choose Starting Difficulty");
+            difficultyDialog.setContentText("Difficulty Level:\n" +
+                    "1 = Easy (3 Melee Mutants)\n" +
+                    "2 = Medium (3 Melee + 2 Ranged Mutants)\n" +
+                    "3 = Hard (3 Melee + 3 Ranged Mutants)\n" +
+                    "4+ = Expert (3 Melee + 4+ Ranged Mutants)");
+            
+            java.util.Optional<Integer> difficultyResult = difficultyDialog.showAndWait();
+            int difficulty = difficultyResult.orElse(2); // Default to medium difficulty
+            
+            engine = new GameEngine(difficulty); // Use selected difficulty
+            
+            // Set up GUI logging
+            engine.setActionLogger(new GuiActionLogger(actionLogArea));
+            
+            updateGui();
+            updateLabels();
+        });
         
         // Use Platform.runLater to ensure the scene is fully loaded before requesting focus
         javafx.application.Platform.runLater(() -> {
@@ -269,6 +292,13 @@ public class Controller {
                 try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
                     SaveState saveState = (SaveState) ois.readObject();
                     engine = saveState.restoreGame();
+                    
+                    // Set up GUI logging for the loaded game
+                    GuiActionLogger logger = new GuiActionLogger(actionLogArea);
+                    engine.setActionLogger(logger);
+                    logger.clear(); // Clear and initialize the action log
+                    logger.log("Game loaded successfully!");
+                    
                     updateGui();
                     updateLabels();
                     
@@ -288,13 +318,32 @@ public class Controller {
     
     @FXML
     public void newGame() {
-        engine = new GameEngine(2); // Start a new game with moderate difficulty
+        // Show difficulty selection dialog
+        javafx.scene.control.ChoiceDialog<Integer> difficultyDialog = new javafx.scene.control.ChoiceDialog<>(2, 1, 2, 3, 4, 5);
+        difficultyDialog.setTitle("Select Difficulty");
+        difficultyDialog.setHeaderText("Choose Game Difficulty");
+        difficultyDialog.setContentText("Difficulty Level:\n" +
+                "1 = Easy (3 Melee Mutants)\n" +
+                "2 = Medium (3 Melee + 2 Ranged Mutants)\n" +
+                "3 = Hard (3 Melee + 3 Ranged Mutants)\n" +
+                "4+ = Expert (3 Melee + 4+ Ranged Mutants)");
+        
+        java.util.Optional<Integer> difficultyResult = difficultyDialog.showAndWait();
+        int difficulty = difficultyResult.orElse(2); // Default to medium difficulty
+        
+        engine = new GameEngine(difficulty); // Start a new game with selected difficulty
+        
+        // Set up GUI logging and clear the action log
+        GuiActionLogger logger = new GuiActionLogger(actionLogArea);
+        engine.setActionLogger(logger);
+        logger.clear(); // Clear and initialize the action log
+        
         updateGui();
         updateLabels();
         
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("New Game");
-        alert.setContentText("New game started! Good luck!");
+        alert.setContentText("New game started with difficulty " + difficulty + "! Good luck!");
         alert.showAndWait();
     }
 

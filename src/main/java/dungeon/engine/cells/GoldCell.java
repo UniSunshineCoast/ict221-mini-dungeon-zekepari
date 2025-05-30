@@ -43,7 +43,7 @@ public class GoldCell extends AbstractItemCell {
             Position playerPos = player.getPosition();
             engine.getMap()[playerPos.getRow()][playerPos.getCol()] = new EmptyCell();
             
-            System.out.println("Gold collected! +2 points");
+            engine.logAction("Gold collected! +" + SCORE_VALUE + " points");
         }
     }
     

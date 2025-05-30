@@ -72,7 +72,7 @@ public class GameMap {
         placeRandomCells(MELEE_MUTANT_COUNT, MeleeMutantCell::new);
         
         // Place ranged mutants based on difficulty
-        placeRandomCells(difficulty, () -> new MeleeMutantCell()); // Just using MeleeMutantCell since we don't have RangedMutantCell
+        placeRandomCells(difficulty, RangedMutantCell::new);
     }
     
     /**

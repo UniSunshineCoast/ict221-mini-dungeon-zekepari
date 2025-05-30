@@ -66,6 +66,7 @@ public class TestGameMap {
         int trapCells = 0;
         int healthPotionCells = 0;
         int meleeMutantCells = 0;
+        int rangedMutantCells = 0;
         
         for (int row = 0; row < map.getSize(); row++) {
             for (int col = 0; col < map.getSize(); col++) {
@@ -77,6 +78,7 @@ public class TestGameMap {
                 else if (cell instanceof TrapCell) trapCells++;
                 else if (cell instanceof HealthPotionCell) healthPotionCells++;
                 else if (cell instanceof MeleeMutantCell) meleeMutantCells++;
+                else if (cell instanceof RangedMutantCell) rangedMutantCells++;
             }
         }
         
@@ -85,7 +87,8 @@ public class TestGameMap {
         assertEquals(5, goldCells, "Map should contain 5 gold cells");
         assertEquals(5, trapCells, "Map should contain 5 trap cells");
         assertEquals(2, healthPotionCells, "Map should contain 2 health potion cells");
-        assertEquals(5, meleeMutantCells, "Map should contain 5 melee mutant cells (3 + difficulty)");
+        assertEquals(3, meleeMutantCells, "Map should contain 3 melee mutant cells");
+        assertEquals(2, rangedMutantCells, "Map should contain 2 ranged mutant cells (difficulty = 2)");
     }
     
     @Test

@@ -47,6 +47,11 @@ public class GameEngine {
 
     // The seed of the random number generator
     private long seed;
+    
+    /**
+     * The action logger for recording game events.
+     */
+    private ActionLogger actionLogger;
 
     /**
      * Creates a new game with the specified difficulty.
@@ -115,6 +120,26 @@ public class GameEngine {
     }
     
     /**
+     * Sets the action logger for recording game events.
+     * 
+     * @param logger the action logger to use
+     */
+    public void setActionLogger(ActionLogger logger) {
+        this.actionLogger = logger;
+    }
+    
+    /**
+     * Logs a message using the action logger if one is set.
+     * 
+     * @param message the message to log
+     */
+    public void logAction(String message) {
+        if (actionLogger != null) {
+            actionLogger.log(message);
+        }
+    }
+    
+    /**
      * Moves the player in the specified direction if possible.
      * 
      * @param direction the direction to move
@@ -148,6 +173,9 @@ public class GameEngine {
         
         // Move is valid, so update player position
         player.setPosition(newPosition);
+        
+        // Log the movement
+        logAction("Moved " + direction.toString().toLowerCase() + " to (" + newPosition.getRow() + ", " + newPosition.getCol() + ")");
         
         // Trigger the cell's onEnter behavior
         destinationCell.onEnter(player, this);
@@ -219,9 +247,11 @@ public class GameEngine {
         if (player.getHp() <= 0) {
             gameOver = true;
             statusMessage = "Game Over! You ran out of health.";
+            logAction("DEFEAT: You ran out of health!");
         } else if (player.getSteps() >= MAX_STEPS) {
             gameOver = true;
             statusMessage = "Game Over! You ran out of steps.";
+            logAction("DEFEAT: You ran out of steps!");
         }
         
         // Note: Win condition is checked in advanceToNextLevel()
@@ -240,6 +270,7 @@ public class GameEngine {
         if (newLevel > WINNING_LEVEL) {
             gameOver = true;
             statusMessage = "Congratulations! You've completed all levels and won the game!";
+            logAction("VICTORY: Congratulations! You've completed all levels and won the game!");
             return;
         }
         
@@ -251,6 +282,7 @@ public class GameEngine {
         
         // Update status message
         statusMessage = "You reached level " + newLevel + "! Find the ladder to continue.";
+        logAction("Reached level " + newLevel + "! Find the ladder to continue.");
     }
     
     /**
@@ -289,7 +321,8 @@ public class GameEngine {
             // - Increments step count
             // - Checks game over conditions
             
-            // You can add additional game logic here if needed
+            // Process ranged mutant shots after player movement
+            processRangedMutantTurns();
             
             // Return true since the move was successful
             return true;
@@ -300,10 +333,218 @@ public class GameEngine {
     }
     
     /**
-     * Sample main method for testing.
+     * Processes all ranged mutant turns, checking for shots at the player.
+     */
+    private void processRangedMutantTurns() {
+        Cell[][] map = getMap();
+        
+        // Iterate through all cells looking for ranged mutants
+        for (int row = 0; row < map.length; row++) {
+            for (int col = 0; col < map[row].length; col++) {
+                Cell cell = map[row][col];
+                if (cell instanceof RangedMutantCell) {
+                    RangedMutantCell rangedCell = (RangedMutantCell) cell;
+                    Position mutantPos = new Position(row, col);
+                    
+                    // Let the ranged mutant process its turn (attempt to shoot)
+                    rangedCell.processTurn(mutantPos, this);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Console interface for the game.
      */
     public static void main(String[] args) {
-        GameEngine engine = newGame(2);
-        System.out.printf("The size of map is %d * %d\n", engine.getSize(), engine.getSize());
+        java.util.Scanner scanner = new java.util.Scanner(System.in);
+        
+        // Parse difficulty from command line args or prompt user
+        int difficulty = 2; // Default difficulty
+        if (args.length > 0) {
+            try {
+                difficulty = Integer.parseInt(args[0]);
+                if (difficulty < 1) difficulty = 1;
+                if (difficulty > 5) difficulty = 5;
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid difficulty argument. Using default difficulty 2.");
+            }
+        } else {
+            System.out.println("=== MiniDungeon Console Interface ===");
+            System.out.println("Select difficulty level (1-5, default 2): ");
+            System.out.println("1 = Easy (3 Melee Mutants)");
+            System.out.println("2 = Medium (3 Melee + 2 Ranged Mutants)");
+            System.out.println("3 = Hard (3 Melee + 3 Ranged Mutants)");
+            System.out.println("4+ = Expert (3 Melee + 4+ Ranged Mutants)");
+            System.out.print("Enter difficulty (1-5) or press Enter for default: ");
+            
+            String difficultyInput = scanner.nextLine().trim();
+            if (!difficultyInput.isEmpty()) {
+                try {
+                    difficulty = Integer.parseInt(difficultyInput);
+                    if (difficulty < 1) difficulty = 1;
+                    if (difficulty > 5) difficulty = 5;
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid input. Using default difficulty 2.");
+                }
+            }
+        }
+        
+        GameEngine engine = newGame(difficulty);
+        
+        // Set up console logging
+        engine.setActionLogger(new ConsoleActionLogger());
+        
+        System.out.println("\n=== MiniDungeon Console Interface ===");
+        System.out.println("Difficulty Level: " + difficulty);
+        System.out.println("Commands: up, down, left, right, save, load, quit");
+        System.out.println("=====================================");
+        
+        printGameState(engine);
+        
+        while (!engine.isGameOver()) {
+            System.out.print("\nEnter command: ");
+            String command = scanner.nextLine().trim().toLowerCase();
+            
+            switch (command) {
+                case "up":
+                    handleMove(engine, Direction.UP);
+                    break;
+                case "down":
+                    handleMove(engine, Direction.DOWN);
+                    break;
+                case "left":
+                    handleMove(engine, Direction.LEFT);
+                    break;
+                case "right":
+                    handleMove(engine, Direction.RIGHT);
+                    break;
+                case "save":
+                    saveGame(engine, scanner);
+                    break;
+                case "load":
+                    engine = loadGame(scanner);
+                    if (engine == null) {
+                        engine = newGame(2);
+                        System.out.println("Load failed, starting new game.");
+                    }
+                    break;
+                case "quit":
+                    System.out.println("Thanks for playing!");
+                    scanner.close();
+                    return;
+                default:
+                    System.out.println("Unknown command. Use: up, down, left, right, save, load, quit");
+                    continue;
+            }
+            
+            printGameState(engine);
+            
+            if (engine.isGameOver()) {
+                System.out.println("\n" + engine.getStatusMessage());
+                System.out.print("Play again? (y/n): ");
+                String playAgain = scanner.nextLine().trim().toLowerCase();
+                if (playAgain.equals("y") || playAgain.equals("yes")) {
+                    engine = newGame(2);
+                    System.out.println("\n=== New Game Started ===");
+                    printGameState(engine);
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        scanner.close();
+        System.out.println("Game ended. Thanks for playing!");
+    }
+    
+    private static void handleMove(GameEngine engine, Direction direction) {
+        boolean moved = engine.move(direction);
+        if (!moved) {
+            System.out.println("Cannot move in that direction!");
+        }
+    }
+    
+    private static void printGameState(GameEngine engine) {
+        System.out.println("\n=== Dungeon Level " + engine.getPlayer().getLevel() + " ===");
+        
+        // Print the grid
+        Cell[][] map = engine.getMap();
+        Position playerPos = engine.getPlayer().getPosition();
+        
+        for (int row = 0; row < engine.getSize(); row++) {
+            for (int col = 0; col < engine.getSize(); col++) {
+                if (row == playerPos.getRow() && col == playerPos.getCol()) {
+                    System.out.print("P ");  // Player
+                } else {
+                    Cell cell = map[row][col];
+                    if (cell instanceof dungeon.engine.cells.WallCell) {
+                        System.out.print("# ");
+                    } else if (cell instanceof dungeon.engine.cells.GoldCell) {
+                        System.out.print("G ");
+                    } else if (cell instanceof dungeon.engine.cells.HealthPotionCell) {
+                        System.out.print("H ");
+                    } else if (cell instanceof dungeon.engine.cells.TrapCell) {
+                        System.out.print("T ");
+                    } else if (cell instanceof dungeon.engine.cells.LadderCell) {
+                        System.out.print("L ");
+                    } else if (cell instanceof dungeon.engine.cells.MeleeMutantCell) {
+                        System.out.print("M ");
+                    } else if (cell instanceof dungeon.engine.cells.RangedMutantCell) {
+                        System.out.print("R ");
+                    } else if (cell instanceof dungeon.engine.cells.EntryCell) {
+                        System.out.print("E ");
+                    } else {
+                        System.out.print(". ");  // Empty
+                    }
+                }
+            }
+            System.out.println();
+        }
+        
+        // Print status
+        Player player = engine.getPlayer();
+        System.out.printf("HP: %d | Score: %d | Steps: %d/%d | Level: %d\n", 
+            player.getHp(), player.getScore(), player.getSteps(), 100, player.getLevel());
+    }
+    
+    private static void saveGame(GameEngine engine, java.util.Scanner scanner) {
+        System.out.print("Enter save filename: ");
+        String filename = scanner.nextLine().trim();
+        if (filename.isEmpty()) {
+            filename = "savegame.dat";
+        }
+        
+        try {
+            dungeon.engine.persistence.SaveState saveState = new dungeon.engine.persistence.SaveState(engine);
+            java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(
+                new java.io.FileOutputStream(filename));
+            oos.writeObject(saveState);
+            oos.close();
+            System.out.println("Game saved to " + filename);
+        } catch (Exception e) {
+            System.out.println("Save failed: " + e.getMessage());
+        }
+    }
+    
+    private static GameEngine loadGame(java.util.Scanner scanner) {
+        System.out.print("Enter save filename: ");
+        String filename = scanner.nextLine().trim();
+        if (filename.isEmpty()) {
+            filename = "savegame.dat";
+        }
+        
+        try {
+            java.io.ObjectInputStream ois = new java.io.ObjectInputStream(
+                new java.io.FileInputStream(filename));
+            dungeon.engine.persistence.SaveState saveState = 
+                (dungeon.engine.persistence.SaveState) ois.readObject();
+            ois.close();
+            System.out.println("Game loaded from " + filename);
+            return saveState.restoreGame();
+        } catch (Exception e) {
+            System.out.println("Load failed: " + e.getMessage());
+            return null;
+        }
     }
 }

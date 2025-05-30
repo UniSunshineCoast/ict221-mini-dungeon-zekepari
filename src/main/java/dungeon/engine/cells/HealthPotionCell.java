@@ -43,7 +43,7 @@ public class HealthPotionCell extends AbstractItemCell {
             Position playerPos = player.getPosition();
             engine.getMap()[playerPos.getRow()][playerPos.getCol()] = new EmptyCell();
             
-            System.out.println("Health potion consumed! +4 HP");
+            engine.logAction("Health potion consumed! +" + HEAL_AMOUNT + " HP");
         }
     }
     

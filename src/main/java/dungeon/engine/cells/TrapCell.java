@@ -35,6 +35,6 @@ public class TrapCell extends AbstractItemCell {
     @Override
     public void onEnter(Player player, GameEngine engine) {
         player.modifyHp(-DAMAGE);
-        System.out.println("Trap triggered! -2 HP");
+        engine.logAction("Trap triggered! -" + DAMAGE + " HP");
     }
 }
